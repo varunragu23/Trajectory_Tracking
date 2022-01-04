@@ -71,7 +71,7 @@ public class DriveSubsystem extends SubsystemBase {
     // double[] ypr_deg = new double[3];
     // p_gyro.getYawPitchRoll(ypr_deg);
     // Rotation2d rot = new Rotation2d(ypr_deg[0]);
-    m_odometry = new DifferentialDriveOdometry(get2dRotation(p_gyro));
+    m_odometry = new DifferentialDriveOdometry(get2dRotation());
     // DifferentialDriveOdometry is initialized with a 2drotation
   }
 
@@ -79,17 +79,19 @@ public class DriveSubsystem extends SubsystemBase {
   public void periodic() {
     // Update the odometry in the periodic block
     m_odometry.update(
-        get2dRotation(p_gyro), m_leftEncoder.getDistance(), m_rightEncoder.getDistance());
+        get2dRotation(), m_leftEncoder.getDistance(), m_rightEncoder.getDistance());
   }
 
-  private Rotation2d get2dRotation(PigeonIMU cur_gyro) {
+  private Rotation2d get2dRotation() {
     // .getCompassHeading()??
-    // double[] ypr_deg = new double[3];
-    // cur_gyro.getYawPitchRoll(ypr_deg);
+    double[] ypr_deg = new double[3];
+    p_gyro.getYawPitchRoll(ypr_deg);
 
-    double radians = cur_gyro.getCompassHeading() * (double)Math.PI / (double)180.000;
+    // double radians = p_gyro.getCompassHeading() * (double)Math.PI / (double)180.000;
 
-    Rotation2d rot = new Rotation2d(radians);
+    new Rotation2d();
+    Rotation2d rot = Rotation2d.fromDegrees(ypr_deg[0]);
+
     return rot;
   }
 
@@ -118,7 +120,7 @@ public class DriveSubsystem extends SubsystemBase {
    */
   public void resetOdometry(Pose2d pose) {
     resetEncoders();
-    m_odometry.resetPosition(pose, get2dRotation(p_gyro));
+    m_odometry.resetPosition(pose, get2dRotation());
   }
 
   /**
@@ -196,7 +198,7 @@ public class DriveSubsystem extends SubsystemBase {
    * @return the robot's heading in degrees, from -180 to 180
    */
   public double getHeading() {
-    return get2dRotation(p_gyro).getDegrees();
+    return get2dRotation().getDegrees();
   }
 
   /**
