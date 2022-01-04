@@ -207,6 +207,6 @@ public class DriveSubsystem extends SubsystemBase {
   public double getTurnRate() {
     double[] xyz_dps = new double[3];
     p_gyro.getRawGyro(xyz_dps);
-    return xyz_dps[2];
+    return -xyz_dps[2];
   }
 }
