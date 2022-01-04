@@ -17,7 +17,10 @@ import edu.wpi.first.wpilibj.kinematics.DifferentialDriveOdometry;
 import edu.wpi.first.wpilibj.kinematics.DifferentialDriveWheelSpeeds;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
+import com.ctre.phoenix.motorcontrol.FeedbackDevice;
+import com.ctre.phoenix.motorcontrol.NeutralMode;
 import com.ctre.phoenix.motorcontrol.TalonFXControlMode;
+import com.ctre.phoenix.motorcontrol.can.TalonFXConfiguration;
 import com.ctre.phoenix.motorcontrol.can.WPI_TalonFX;
 
 import com.ctre.phoenix.sensors.PigeonIMU;
@@ -26,33 +29,40 @@ import java.lang.Math.*;
 
 public class DriveSubsystem extends SubsystemBase {
   // The motors on the left side of the drive.
+
+  WPI_TalonFX leftMotor1 = new WPI_TalonFX(DriveConstants.kLeftMotor1Port);
+  WPI_TalonFX leftMotor2 = new WPI_TalonFX(DriveConstants.kLeftMotor2Port);
+  WPI_TalonFX rightMotor1 = new WPI_TalonFX(DriveConstants.kRightMotor1Port);
+  WPI_TalonFX rightMotor2 = new WPI_TalonFX(DriveConstants.kRightMotor2Port);
+
   private final SpeedControllerGroup m_leftMotors =
       new SpeedControllerGroup(
-          new WPI_TalonFX(DriveConstants.kLeftMotor1Port),
-          new WPI_TalonFX(DriveConstants.kLeftMotor2Port));
+          leftMotor1,
+          leftMotor2);
+
 
   // The motors on the right side of the drive.
   private final SpeedControllerGroup m_rightMotors =
       new SpeedControllerGroup(
-          new WPI_TalonFX(DriveConstants.kRightMotor1Port),
-          new WPI_TalonFX(DriveConstants.kRightMotor2Port));
+          rightMotor1,
+          rightMotor2);
 
   // The robot's drive
   private final DifferentialDrive m_drive = new DifferentialDrive(m_leftMotors, m_rightMotors);
 
   // The left-side drive encoder
-  private final Encoder m_leftEncoder =
-      new Encoder(
-          DriveConstants.kLeftEncoderPorts[0],
-          DriveConstants.kLeftEncoderPorts[1],
-          DriveConstants.kLeftEncoderReversed);
+  // private final Encoder m_leftEncoder =
+  //     new Encoder(
+  //         DriveConstants.kLeftEncoderPorts[0],
+  //         DriveConstants.kLeftEncoderPorts[1],
+  //         DriveConstants.kLeftEncoderReversed);
 
-  // The right-side drive encoder
-  private final Encoder m_rightEncoder =
-      new Encoder(
-          DriveConstants.kRightEncoderPorts[0],
-          DriveConstants.kRightEncoderPorts[1],
-          DriveConstants.kRightEncoderReversed);
+  // // The right-side drive encoder
+  // private final Encoder m_rightEncoder =
+  //     new Encoder(
+  //         DriveConstants.kRightEncoderPorts[0],
+  //         DriveConstants.kRightEncoderPorts[1],
+  //         DriveConstants.kRightEncoderReversed);
   // The gyro sensor
   // https://www.ctr-electronics.com/downloads/pdf/Pigeon%20IMU%20User's%20Guide.pdf
   private final PigeonIMU p_gyro = new PigeonIMU(0);
@@ -63,9 +73,42 @@ public class DriveSubsystem extends SubsystemBase {
 
   /** Creates a new DriveSubsystem. */
   public DriveSubsystem() {
+
+    leftMotor1.configFactoryDefault();
+    leftMotor2.configFactoryDefault();
+    rightMotor1.configFactoryDefault();
+    rightMotor2.configFactoryDefault();
+
+    TalonFXConfiguration configs = new TalonFXConfiguration();
+    configs.primaryPID.selectedFeedbackSensor = FeedbackDevice.IntegratedSensor;
+
+    leftMotor1.configAllSettings(configs);
+    leftMotor2.configAllSettings(configs);
+    rightMotor1.configAllSettings(configs);
+    rightMotor2.configAllSettings(configs);
+
+    leftMotor2.follow(leftMotor1);
+    rightMotor2.follow(rightMotor1);
+
+    leftMotor1.setNeutralMode(NeutralMode.Brake);
+    leftMotor2.setNeutralMode(NeutralMode.Brake);
+    rightMotor1.setNeutralMode(NeutralMode.Brake);
+    rightMotor2.setNeutralMode(NeutralMode.Brake);
+
+    leftMotor1.setInverted(DriveConstants.kLeftEncoderReversed);
+    leftMotor2.setInverted(DriveConstants.kLeftEncoderReversed);
+
+    rightMotor1.setInverted(DriveConstants.kRightEncoderReversed);
+    rightMotor2.setInverted(DriveConstants.kRightEncoderReversed);
+
+    m_drive.setRightSideInverted(false);
+
+
+
     // Sets the distance per pulse for the encoders
-    m_leftEncoder.setDistancePerPulse(DriveConstants.kEncoderDistancePerPulse);
-    m_rightEncoder.setDistancePerPulse(DriveConstants.kEncoderDistancePerPulse);
+    // --------------do we need to do this????-------------
+    // m_leftEncoder.setDistancePerPulse(DriveConstants.kEncoderDistancePerPulse);
+    // m_rightEncoder.setDistancePerPulse(DriveConstants.kEncoderDistancePerPulse);
 
     resetEncoders();
     // double[] ypr_deg = new double[3];
@@ -79,7 +122,7 @@ public class DriveSubsystem extends SubsystemBase {
   public void periodic() {
     // Update the odometry in the periodic block
     m_odometry.update(
-        get2dRotation(), m_leftEncoder.getDistance(), m_rightEncoder.getDistance());
+        get2dRotation(), getLeftEncoderDistance(), getRightEncoderDistance());
   }
 
   private Rotation2d get2dRotation() {
@@ -89,10 +132,10 @@ public class DriveSubsystem extends SubsystemBase {
 
     // double radians = p_gyro.getCompassHeading() * (double)Math.PI / (double)180.000;
 
-    new Rotation2d();
-    Rotation2d rot = Rotation2d.fromDegrees(ypr_deg[0]);
+    // new Rotation2d();
+    // Rotation2d rot = new Rotation2d.fromDegrees(ypr_deg[0]);
 
-    return rot;
+    return Rotation2d.fromDegrees(ypr_deg[0]);
   }
 
   /**
@@ -110,7 +153,7 @@ public class DriveSubsystem extends SubsystemBase {
    * @return The current wheel speeds.
    */
   public DifferentialDriveWheelSpeeds getWheelSpeeds() {
-    return new DifferentialDriveWheelSpeeds(m_leftEncoder.getRate(), m_rightEncoder.getRate());
+    return new DifferentialDriveWheelSpeeds(getLeftEncoderRate(), getRightEncoderRate());
   }
 
   /**
@@ -147,36 +190,64 @@ public class DriveSubsystem extends SubsystemBase {
 
   /** Resets the drive encoders to currently read a position of 0. */
   public void resetEncoders() {
-    m_leftEncoder.reset();
-    m_rightEncoder.reset();
+    // m_leftEncoder.reset();
+    // m_rightEncoder.reset();
+
+    leftMotor1.setSelectedSensorPosition(0);
+    rightMotor1.setSelectedSensorPosition(0);
   }
+
+  public double getAverageEncoderDistance() {
+    return (getLeftEncoderDistance() + getRightEncoderDistance()) / 2.0;
+  }
+
+  public double getLeftEncoderDistance(){
+    return leftMotor1.getSelectedSensorPosition() * DriveConstants.kEncoderDistancePerPulse;
+    
+  }
+
+  public double getRightEncoderDistance(){
+    return rightMotor1.getSelectedSensorPosition() * DriveConstants.kEncoderDistancePerPulse;
+
+  }
+
+  public double getRightEncoderRate() {
+    return rightMotor1.getSelectedSensorVelocity() * DriveConstants.kEncoderDistancePerPulse / 60;
+
+  }
+
+  public double getLeftEncoderRate() {
+    return leftMotor1.getSelectedSensorVelocity() * DriveConstants.kEncoderDistancePerPulse / 60;
+    
+  }
+
 
   /**
    * Gets the average distance of the two encoders.
    *
    * @return the average of the two encoder readings
    */
-  public double getAverageEncoderDistance() {
-    return (m_leftEncoder.getDistance() + m_rightEncoder.getDistance()) / 2.0;
-  }
+  // public double getAverageEncoderDistance() {
+    // return (m_leftEncoder.getDistance() + m_rightEncoder.getDistance()) / 2.0;
+  // }
 
   /**
    * Gets the left drive encoder.
    *
    * @return the left drive encoder
    */
-  public Encoder getLeftEncoder() {
-    return m_leftEncoder;
-  }
+  // public Encoder getLeftEncoder() {
+    // return m_leftEncoder;
+  // }
 
   /**
    * Gets the right drive encoder.
    *
    * @return the right drive encoder
    */
-  public Encoder getRightEncoder() {
-    return m_rightEncoder;
-  }
+  // public Encoder getRightEncoder() {
+    // return m_rightEncoder;
+  // }
 
   /**
    * Sets the max output of the drive. Useful for scaling the drive to drive more slowly.
